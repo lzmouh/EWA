@@ -1,13 +1,3 @@
-Got it. Let's adjust the logic to meet those precise financial rules.
-
-Here is what we are changing based on your specifications:
-
-1. **Two-Digit Rounding:** The Electricity and Water subtotals are now rounded to 2 decimal places (`round(value, 2)`) right after calculation.
-2. **Fee Accumulation:** The Sanitary fee and Municipality fee are calculated separately and added *on top* of those rounded subtotals to form the Grand Total.
-
-### 💻 Updated Streamlit Code (`app.py`)
-
-```python
 import streamlit as st
 
 # Set up page configurations
