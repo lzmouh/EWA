@@ -1,3 +1,13 @@
+Got it. Let's adjust the logic to meet those precise financial rules.
+
+Here is what we are changing based on your specifications:
+
+1. **Two-Digit Rounding:** The Electricity and Water subtotals are now rounded to 2 decimal places (`round(value, 2)`) right after calculation.
+2. **Fee Accumulation:** The Sanitary fee and Municipality fee are calculated separately and added *on top* of those rounded subtotals to form the Grand Total.
+
+### 💻 Updated Streamlit Code (`app.py`)
+
+```python
 import streamlit as st
 
 # Set up page configurations
@@ -12,7 +22,6 @@ st.set_page_config(
 # ==========================================
 st.sidebar.header("⚙️ Tariff & Rate Settings (BD)")
 
-# Default values from your original script
 ELECTRICITY_RATE = st.sidebar.number_input("Electricity Rate (per kWh)", value=0.032, format="%.3f")
 WATER_RATE = st.sidebar.number_input("Water Rate (per m³)", value=0.775, format="%.3f")
 SANITARY_RATE = st.sidebar.number_input("Sanitary Fee Rate", value=0.155, format="%.3f")
@@ -26,7 +35,7 @@ MUNICIPALITY_FEE = st.sidebar.number_input("Municipality Fee", value=5.000, form
 # MAIN APP INTERFACE
 # ==========================================
 st.title("⚡ EWA Electricity & Water Bill Generator")
-st.markdown("Calculate and preview your utility bills seamlessly. Adjust rates in the sidebar if needed.")
+st.markdown("Calculate and preview your utility bills seamlessly according to your custom rounding and fee sequence rules.")
 
 # User Inputs structured nicely using columns
 st.subheader("📊 Enter Meter Readings")
@@ -45,7 +54,7 @@ with col2:
     curr_water = st.number_input("Current Water Reading", min_value=0.0, value=0.0, step=1.0, format="%.1f")
 
 # ==========================================
-# LOGIC & CALCULATIONS
+# LOGIC & CALCULATIONS (ROUNDING ADJUSTED)
 # ==========================================
 elec_consumption = curr_elec - prev_elec
 water_consumption = curr_water - prev_water
@@ -54,15 +63,25 @@ water_consumption = curr_water - prev_water
 if elec_consumption < 0 or water_consumption < 0:
     st.error("⚠️ Error: Current readings cannot be lower than previous readings. Please check your inputs.")
 else:
-    # Calculations
+    # 1. Calculate and strictly round Subtotals to 2 digits
     elec_charge = elec_consumption * ELECTRICITY_RATE
-    elec_total = elec_charge + ELECTRICITY_ADMIN
+    elec_subtotal_raw = elec_charge + ELECTRICITY_ADMIN
+    elec_subtotal = round(elec_subtotal_raw, 2)  # Strict 2-digit rounding
 
     water_charge = water_consumption * WATER_RATE
-    sanitary_fee = water_consumption * SANITARY_RATE
-    water_total = water_charge + sanitary_fee + WATER_ADMIN
+    water_subtotal_raw = water_charge + WATER_ADMIN
+    water_subtotal = round(water_subtotal_raw, 2)  # Strict 2-digit rounding
 
-    grand_total = elec_total + water_total + MUNICIPALITY_FEE
+    # 2. Separate External Fees (Added on top of subtotals)
+    sanitary_fee = water_consumption * SANITARY_RATE
+    
+    # 3. Calculate Grand Total
+    grand_total = (
+        elec_subtotal 
+        + water_subtotal 
+        + sanitary_fee 
+        + MUNICIPALITY_FEE
+    )
 
     # ==========================================
     # DASHBOARD DISPLAY
@@ -72,8 +91,8 @@ else:
     
     # Modern Metric Cards
     m1, m2, m3 = st.columns(3)
-    m1.metric("Electricity Total", f"{elec_total:.3f} BD")
-    m2.metric("Water Total", f"{water_total:.3f} BD")
+    m1.metric("Electricity Subtotal", f"{elec_subtotal:.2f} BD")
+    m2.metric("Water Subtotal", f"{water_subtotal:.2f} BD")
     m3.metric("TOTAL AMOUNT DUE", f"{grand_total:.3f} BD", delta_color="inverse")
 
     # Tabs for detailed breakdown
@@ -81,19 +100,18 @@ else:
 
     with tab1:
         st.markdown(f"**Consumption:** {elec_consumption:,.1f} kWh")
-        st.markdown(f"**Energy Charge:** {elec_consumption:,.1f} × {ELECTRICITY_RATE:.3f} = **{elec_charge:.3f} BD**")
+        st.markdown(f"**Energy Charge:** {elec_consumption:,.1f} × {ELECTRICITY_RATE:.3f} = {elec_charge:.3f} BD")
         st.markdown(f"**Administration Fee:** {ELECTRICITY_ADMIN:.3f} BD")
-        st.info(f"Subtotal: {elec_total:.3f} BD")
+        st.success(f"**Rounded Subtotal (2 Digits):** {elec_subtotal:.2f} BD")
 
     with tab2:
         st.markdown(f"**Consumption:** {water_consumption:,.1f} m³")
-        st.markdown(f"**Water Charge:** {water_consumption:,.1f} × {WATER_RATE:.3f} = **{water_charge:.3f} BD**")
-        st.markdown(f"**Sanitary Fee:** {water_consumption:,.1f} × {SANITARY_RATE:.3f} = **{sanitary_fee:.3f} BD**")
+        st.markdown(f"**Water Charge:** {water_consumption:,.1f} × {WATER_RATE:.3f} = {water_charge:.3f} BD")
         st.markdown(f"**Administration Fee:** {WATER_ADMIN:.3f} BD")
-        st.info(f"Subtotal: {water_total:.3f} BD")
+        st.success(f"**Rounded Subtotal (2 Digits):** {water_subtotal:.2f} BD")
 
     with tab3:
-        # Recreating your exact classic text look inside a code box for printing/copying
+        # Recreating the printable receipt layout reflecting the new aggregation format
         bill_text = f"""=======================================================
                EWA ELECTRICITY & WATER BILL
 =======================================================
@@ -101,7 +119,7 @@ else:
 Billing Period : {days} Days
 
 ---------------------------------------------
-ELECTRICITY
+ELECTRICITY (Rounded to 2 digits)
 ---------------------------------------------
 Previous Reading      : {prev_elec:,.1f}
 Current Reading       : {curr_elec:,.1f}
@@ -110,24 +128,23 @@ Rate                  : {ELECTRICITY_RATE:.3f} BD
 Energy Charge         : {elec_charge:.3f} BD
 Administration Fees   : {ELECTRICITY_ADMIN:.3f} BD
 
-Electricity Total     : {elec_total:.3f} BD
+Electricity Subtotal  : {elec_subtotal:.2f} BD
 
 ---------------------------------------------
-WATER
+WATER (Rounded to 2 digits)
 ---------------------------------------------
 Previous Reading      : {prev_water:,.1f}
 Current Reading       : {curr_water:,.1f}
 Consumption           : {water_consumption:,.1f} m3
-
-Water Charge          : {water_charge:.3f} BD ({water_consumption:,.1f} × {WATER_RATE:.3f})
-Sanitary Fee          : {sanitary_fee:.3f} BD ({water_consumption:,.1f} × {SANITARY_RATE:.3f})
+Water Charge          : {water_charge:.3f} BD
 Administration Fees   : {WATER_ADMIN:.3f} BD
 
-Water Total           : {water_total:.3f} BD
+Water Subtotal        : {water_subtotal:.2f} BD
 
 ---------------------------------------------
-OTHER CHARGES
+FEES ADDED ON TOP
 ---------------------------------------------
+Sanitary Fee          : {sanitary_fee:.3f} BD ({water_consumption:,.1f} × {SANITARY_RATE:.3f})
 Municipality Fees     : {MUNICIPALITY_FEE:.3f} BD
 
 =============================================
@@ -146,3 +163,5 @@ Pride in what we do.. Proud to serve..
             file_name=f"EWA_Bill_{days}_days.txt",
             mime="text/plain"
         )
+
+```
