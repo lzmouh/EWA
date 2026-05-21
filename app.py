@@ -153,5 +153,3 @@ Pride in what we do.. Proud to serve..
             file_name=f"EWA_Bill_{days}_days.txt",
             mime="text/plain"
         )
-
-```
